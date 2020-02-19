@@ -1,9 +1,10 @@
-import cats.effect.ExitCode
+import cats.effect.{ExitCode, Resource}
 import monix.eval.{Task, TaskApp}
 import org.http4s.HttpRoutes
 import org.http4s.dsl._
 import org.http4s.implicits._
 import org.http4s.server.blaze.BlazeServerBuilder
+import scala.util.Try
 
 object Main extends TaskApp {
   override def run(args: List[String]): Task[ExitCode] = {
@@ -15,12 +16,16 @@ object Main extends TaskApp {
         Ok(s"hello, $name")
     }
 
-    BlazeServerBuilder[Task]
-      .bindHttp(8080, "localhost")
-      .withHttpApp(routes.orNotFound)
-      .resource
-      .use { _ =>
-        Task.never
-      }
+    (for {
+      port <- Resource.liftF(
+        Task.fromTry(Try(System.getProperty("http.port").toInt))
+      )
+      _ <- BlazeServerBuilder[Task]
+        .bindHttp(port, "0.0.0.0")
+        .withHttpApp(routes.orNotFound)
+        .resource
+    } yield ()).use { _ =>
+      Task.never
+    }
   }
 }
