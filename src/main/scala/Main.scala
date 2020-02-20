@@ -1,35 +1,13 @@
-import cats.{Applicative, Defer}
-import cats.effect.{ConcurrentEffect, ExitCode, Timer}
 import cats.effect.ExitCode._
-import zio.{RIO, ZIO, ZEnv, system}
-import zio.interop.catz._
+import endpoints.HelloEndpoint
 import fs2.Stream
-import org.http4s.HttpRoutes
 import org.http4s.dsl._
 import org.http4s.implicits._
-import org.http4s.server.blaze.BlazeServerBuilder
+import zio.interop.catz._
+import zio.{RIO, ZEnv, ZIO, system}
 
 object Main extends zio.App {
   type AppTask[A] = RIO[ZEnv, A]
-
-  def routes[F[_]: Applicative: Defer](dsl: Http4sDsl[F]): HttpRoutes[F] = {
-    import dsl._
-
-    HttpRoutes.of[F] {
-      case GET -> Root / "hello" / name =>
-        Ok(s"hello, $name")
-    }
-  }
-
-  def httpServe[F[_]: ConcurrentEffect: Timer](
-      host: String,
-      port: Int,
-      routes: HttpRoutes[F]
-  ): Stream[F, ExitCode] =
-    BlazeServerBuilder[F]
-      .bindHttp(port, host)
-      .withHttpApp(routes.orNotFound)
-      .serve
 
   def port(): ZIO[system.System, Throwable, Int] =
     (for {
@@ -43,7 +21,10 @@ object Main extends zio.App {
     ZIO.runtime[ZEnv].flatMap { implicit rt =>
       (for {
         port <- Stream.eval(port())
-        _ <- httpServe("0.0.0.0", port, routes(Http4sDsl[AppTask]))
+        helloEndpoint = new HelloEndpoint(Http4sDsl[AppTask])
+        httpApp = helloEndpoint.routes.orNotFound
+        server = new HttpServerImpl("0.0.0.0", port, httpApp)
+        _ <- server.serve
       } yield ()).compile.drain
         .foldM(
           th => ZIO.die(th).as(Error.code),
