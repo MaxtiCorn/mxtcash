@@ -7,11 +7,8 @@ trait HttpServer[F[_]] {
   def serve: Stream[F, ExitCode]
 }
 
-class HttpServerImpl[F[_]: ConcurrentEffect: Timer](
-    host: String,
-    port: Int,
-    httpApp: HttpApp[F]
-) extends HttpServer[F] {
+class HttpServerImpl[F[_]: ConcurrentEffect: Timer](host: String, port: Int, httpApp: HttpApp[F])
+  extends HttpServer[F] {
   def serve: Stream[F, ExitCode] =
     BlazeServerBuilder[F]
       .bindHttp(port, host)
