@@ -1,4 +1,4 @@
-package endpoints
+package com.maxticorn.endpoints
 
 import cats.{Applicative, Defer}
 import org.http4s.HttpRoutes

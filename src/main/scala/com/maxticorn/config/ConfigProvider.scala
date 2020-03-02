@@ -1,15 +1,15 @@
-package config
+package com.maxticorn.config
 
 import zio.{ZIO, system}
 
 object ConfigProvider {
-  def serverConfig: ZIO[system.System, Throwable, ServerConfig] =
+  def serverConfig(implicit runtime: zio.Runtime[system.System]): ZIO[system.System, Throwable, ServerConfig] =
     for {
-      host <- system
+      host <- runtime.environment.system
         .env("HOST")
         .someOrFail(new RuntimeException(s"couldn't read host"))
 
-      port <- system
+      port <- runtime.environment.system
         .env("PORT")
         .map(_.flatMap(_.toIntOption))
         .someOrFail(new RuntimeException(s"couldn't read port"))
