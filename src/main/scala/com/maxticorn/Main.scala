@@ -5,8 +5,9 @@ import com.maxticorn.db.Db
 import com.maxticorn.service.AppService
 import config.ConfigProvider
 import doobie.h2.H2Transactor
-import endpoints.HelloEndpoint
+import components.HttpComponent
 import org.http4s.dsl._
+import tsec.mac.jca.HMACSHA256
 import zio.blocking.Blocking
 import zio.system.System
 import zio.clock.Clock
@@ -34,12 +35,12 @@ object Main extends zio.App {
     (for {
       implicit0(runtime: zio.Runtime[AppEnv]) <- ZIO.runtime[AppEnv].toManaged_
       transactor                              <- transactorResource.toManaged
-      appService                              = new AppService(new Db[AppTask], transactor)
+      key                                     <- HMACSHA256.generateKey[AppTask].toManaged_
+      appService                              = new AppService(new Db[AppTask], transactor, key)
       _                                       <- appService.init.toManaged_
       serverConfig                            <- ConfigProvider.serverConfig.toManaged_
-      helloEndpoint                           = new HelloEndpoint(Http4sDsl[AppTask], appService)
-      httpApp                                 = helloEndpoint.httpApp
-      server                                  = new HttpServerImpl(serverConfig, httpApp)
+      httpComponent                           = new HttpComponent(Http4sDsl[AppTask], appService)
+      server                                  = new HttpServerImpl(serverConfig, httpComponent.httpApp)
       _                                       <- server.builder.resource.toManaged
     } yield ()).useForever
       .foldM(
