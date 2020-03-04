@@ -17,6 +17,7 @@ libraryDependencies ++= Seq(
   "dev.zio"            %% "zio-interop-cats"    % zioCatsV,
   "org.http4s"         %% "http4s-blaze-server" % http4sV,
   "org.http4s"         %% "http4s-dsl"          % http4sV,
+  "org.http4s"         %% "http4s-circe"        % http4sV,
   "io.github.jmcardon" %% "tsec-http4s"         % tsecV,
   "org.tpolecat"       %% "doobie-core"         % doobieV,
   "org.tpolecat"       %% "doobie-h2"           % doobieV,

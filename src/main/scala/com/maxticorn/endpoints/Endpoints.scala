@@ -5,6 +5,8 @@ import cats.syntax.flatMap._
 import cats.syntax.functor._
 import cats.syntax.applicative._
 import com.maxticorn.components.ServiceComponent
+import io.circe.syntax._
+import org.http4s.circe._
 import org.http4s.dsl.Http4sDsl
 import org.http4s.{HttpRoutes, Response}
 import tsec.authentication.{SecuredRequestHandler, TSecAuthService}
@@ -21,13 +23,14 @@ class Endpoints[F[_]: Sync](serviceComponent: ServiceComponent[F]) {
     case GET -> Root / "login" :? loginMatcher(login) +& passwordMatcher(password) =>
       for {
         token    <- serviceComponent.authService.jwtToken(login, password)
-        response <- token.fold(Response.notFound[F].pure)(Ok(_))
+        response <- token.fold(Response.notFound[F].pure)(token => Ok(token.asJson))
       } yield response
   }
 
   val api: HttpRoutes[F] =
     SecuredRequestHandler(serviceComponent.authService.jwtAuthenticator).liftService(TSecAuthService {
-      case GET -> Root / "hello" asAuthed user => Ok(s"Hello, ${user.login}")
+      case GET -> Root / "hello" asAuthed user =>
+        Ok(s"Hello, ${user.login}".asJson)
     })
 }
 
