@@ -9,15 +9,13 @@ import com.maxticorn.domain.Credentials
 import io.circe.syntax._
 import org.http4s.circe._
 import org.http4s.dsl.Http4sDsl
-import org.http4s.{EntityDecoder, HttpRoutes, Response}
+import org.http4s.{HttpRoutes, Response}
 import tsec.authentication.{SecuredRequestHandler, TSecAuthService}
 import tsec.authentication._
 
 class Endpoints[F[_]: Sync](serviceComponent: ServiceComponent[F]) {
   val dsl: Http4sDsl[F] = Http4sDsl[F]
   import dsl._
-
-  implicit val decoder: EntityDecoder[F, Credentials] = jsonOf[F, Credentials]
 
   val login: HttpRoutes[F] = HttpRoutes.of[F] {
     case req @ POST -> Root / "register" =>
