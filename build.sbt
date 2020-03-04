@@ -1,6 +1,7 @@
 name := "mxtcash"
 scalaVersion := "2.13.1"
 herokuAppName in Compile := "mxtcash"
+herokuJdkVersion in Compile := "11"
 
 enablePlugins(JavaAppPackaging)
 
