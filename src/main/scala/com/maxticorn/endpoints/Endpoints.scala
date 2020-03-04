@@ -5,7 +5,7 @@ import cats.syntax.flatMap._
 import cats.syntax.functor._
 import cats.syntax.applicative._
 import com.maxticorn.components.ServiceComponent
-import com.maxticorn.domain.LoginRequest
+import com.maxticorn.domain.Credentials
 import io.circe.syntax._
 import org.http4s.circe._
 import org.http4s.dsl.Http4sDsl
@@ -17,12 +17,19 @@ class Endpoints[F[_]: Sync](serviceComponent: ServiceComponent[F]) {
   val dsl: Http4sDsl[F] = Http4sDsl[F]
   import dsl._
 
-  implicit val decoder: EntityDecoder[F, LoginRequest] = jsonOf[F, LoginRequest]
+  implicit val decoder: EntityDecoder[F, Credentials] = jsonOf[F, Credentials]
 
   val login: HttpRoutes[F] = HttpRoutes.of[F] {
+    case req @ POST -> Root / "register" =>
+      for {
+        loginRequest <- req.as[Credentials]
+        token        <- serviceComponent.authService.register(loginRequest.login, loginRequest.password)
+        response     <- token.fold(NotFound("this login password pair already exists".asJson))(token => Ok(token.asJson))
+      } yield response
+
     case req @ POST -> Root / "login" =>
       for {
-        loginRequest <- req.as[LoginRequest]
+        loginRequest <- req.as[Credentials]
         token        <- serviceComponent.authService.jwtToken(loginRequest.login, loginRequest.password)
         response     <- token.fold(Response.notFound[F].pure)(token => Ok(token.asJson))
       } yield response

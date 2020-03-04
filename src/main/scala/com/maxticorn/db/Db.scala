@@ -7,6 +7,7 @@ import doobie.util.transactor.Transactor
 
 trait Db[F[_]] {
   def createUserTable: F[Unit]
+  def saveUser(login: String, password: String): F[Long]
   def getUser(id: String): F[Option[User]]
   def getUser(login: String, password: String): F[Option[User]]
 }
@@ -17,6 +18,9 @@ class DbImpl[F[_]](transactor: Transactor[F])(implicit bracket: Bracket[F, Throw
       _ <- SQL.createUserTable.run
       _ <- SQL.insertAdminUser.withUniqueGeneratedKeys[Long]("id")
     } yield ()).transact(transactor)
+
+  def saveUser(login: String, password: String): F[Long] =
+    SQL.saveUser(login, password).withUniqueGeneratedKeys[Long]("id").transact(transactor)
 
   def getUser(id: String): F[Option[User]] =
     SQL.getUser(id).option.transact(transactor)
@@ -42,6 +46,9 @@ object SQL {
 
   val insertAdminUser: doobie.Update0 =
     sql"""insert into user(login, password) values ('admin', 'admin')""".update
+
+  def saveUser(login: String, password: String): doobie.Update0 =
+    sql"""insert into user(login, password) values ($login, $password)""".update
 
   def getUser(id: String): doobie.Query0[User] =
     sql"""select * from user where id=$id""".query[User]
