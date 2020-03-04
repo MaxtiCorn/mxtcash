@@ -1,13 +1,12 @@
 package com.maxticorn
 
 import cats.effect.{Blocker, Resource}
+import com.maxticorn.endpoints.Endpoints
 import com.maxticorn.db.Db
-import com.maxticorn.service.AppService
+import com.maxticorn.service.AuthService
 import config.ConfigProvider
 import doobie.h2.H2Transactor
-import components.HttpComponent
-import org.http4s.dsl._
-import tsec.mac.jca.HMACSHA256
+import components.{HttpComponent, ServiceComponent}
 import zio.blocking.Blocking
 import zio.system.System
 import zio.clock.Clock
@@ -35,12 +34,13 @@ object Main extends zio.App {
     (for {
       implicit0(runtime: zio.Runtime[AppEnv]) <- ZIO.runtime[AppEnv].toManaged_
       transactor                              <- transactorResource.toManaged
-      key                                     <- HMACSHA256.generateKey[AppTask].toManaged_
-      appService                              = new AppService(new Db[AppTask], transactor, key)
-      _                                       <- appService.init.toManaged_
+      db                                      = Db(transactor)
+      authService                             <- AuthService.mk(db).toManaged_
+      serviceComponent                        <- ServiceComponent.mk(authService).toManaged_
+      endpoints                               = Endpoints(serviceComponent)
+      httpComponent                           = HttpComponent(endpoints)
       serverConfig                            <- ConfigProvider.serverConfig.toManaged_
-      httpComponent                           = new HttpComponent(Http4sDsl[AppTask], appService)
-      server                                  = new HttpServerImpl(serverConfig, httpComponent.httpApp)
+      server                                  = HttpServer(serverConfig, httpComponent)
       _                                       <- server.builder.resource.toManaged
     } yield ()).useForever
       .foldM(
