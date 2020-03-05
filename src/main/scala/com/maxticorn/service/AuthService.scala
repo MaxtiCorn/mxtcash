@@ -30,7 +30,7 @@ class AuthServiceImpl[F[_]: Sync](db: Db[F], key: MacSigningKey[HMACSHA256]) ext
       id <- OptionT(db.getUser(login, password))
         .flatTransform {
           case Some(_) => Option.empty[Long].pure[F]
-          case None => db.saveUser(login, password).map(_.some)
+          case None    => db.saveUser(login, password).map(_.some)
         }
       token <- OptionT.liftF(jwtAuthenticator.create(id.toString).map(_.jwt.toEncodedString))
     } yield token).value
@@ -52,6 +52,8 @@ class AuthServiceImpl[F[_]: Sync](db: Db[F], key: MacSigningKey[HMACSHA256]) ext
 object AuthService {
   def mk[F[_]: Sync](db: Db[F]): F[AuthService[F]] =
     for {
-      key <- HMACSHA256.generateKey[F]
-    } yield new AuthServiceImpl(db, key)
+      key     <- HMACSHA256.generateKey[F]
+      service = new AuthServiceImpl(db, key)
+      _       <- service.init
+    } yield service
 }
