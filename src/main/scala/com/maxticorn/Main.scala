@@ -18,16 +18,15 @@ import scala.concurrent.ExecutionContextExecutor
 import scala.concurrent.ExecutionContext.fromExecutor
 
 object Main extends zio.App {
-  type AppTask[A] = RIO[ZEnv, A]
 
   val executor: ExecutionContextExecutor = fromExecutor(newWorkStealingPool())
   implicit val runtime: zio.Runtime[ZEnv] = this
     .withExecutor(fromExecutionContext(defaultYieldOpCount)(executor))
 
-  private def dbResource: Resource[AppTask, Db[AppTask]] =
+  private def dbResource: Resource[RIO[ZEnv, *], Db[RIO[ZEnv, *]]] =
     for {
       blockingExecutor <- Resource.liftF(ZIO.accessM[Blocking](_.blocking.blockingExecutor))
-      transactor <- H2Transactor.newH2Transactor[AppTask](
+      transactor <- H2Transactor.newH2Transactor(
         "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1",
         "username",
         "password",

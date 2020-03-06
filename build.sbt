@@ -24,6 +24,5 @@ libraryDependencies ++= Seq(
   "org.slf4j"          % "slf4j-simple"         % slf4jV
 )
 
-libraryDependencies ++= Seq(
-  compilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1")
-)
+addCompilerPlugin("org.typelevel" %% "kind-projector"     % "0.11.0" cross CrossVersion.full)
+addCompilerPlugin("com.olegpy"    %% "better-monadic-for" % "0.3.1")
