@@ -1,9 +1,12 @@
 name := "mxtcash"
+version := "0.0.1"
 scalaVersion := "2.13.1"
 herokuAppName in Compile := "mxtcash"
 herokuJdkVersion in Compile := "11"
 
 enablePlugins(JavaAppPackaging)
+enablePlugins(DockerPlugin)
+dockerBaseImage := "openjdk:jre"
 
 val zioV     = "1.0.0-RC17"
 val zioCatsV = "2.0.0.0-RC10"
