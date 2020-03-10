@@ -7,6 +7,7 @@ herokuJdkVersion in Compile := "11"
 enablePlugins(JavaAppPackaging)
 enablePlugins(DockerPlugin)
 dockerBaseImage := "openjdk:jre"
+dockerRepository := Some("maxticorn")
 
 val zioV     = "1.0.0-RC17"
 val zioCatsV = "2.0.0.0-RC10"
