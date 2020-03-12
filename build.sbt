@@ -9,8 +9,8 @@ enablePlugins(DockerPlugin)
 dockerBaseImage := "openjdk:jre"
 dockerRepository := Some("maxticorn")
 
-val zioV     = "1.0.0-RC17"
-val zioCatsV = "2.0.0.0-RC10"
+val zioV     = "1.0.0-RC18-2"
+val zioCatsV = "2.0.0.0-RC12"
 val http4sV  = "0.21.1"
 val tsecV    = "0.2.0"
 val doobieV  = "0.8.8"

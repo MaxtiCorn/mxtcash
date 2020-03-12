@@ -8,29 +8,22 @@ import config.ConfigProvider
 import cats.effect.{Blocker, Resource}
 import doobie.h2.H2Transactor
 import components.{HttpComponent, ServiceComponent}
-import zio.blocking.Blocking
-import zio.internal.PlatformLive.defaultYieldOpCount
-import zio.internal.Executor.fromExecutionContext
 import zio.interop.catz._
+import zio.blocking.Blocking
 import zio.{RIO, ZEnv, ZIO}
 
-import scala.concurrent.ExecutionContextExecutor
 import scala.concurrent.ExecutionContext.fromExecutor
 
-object Main extends zio.App {
-
-  val executor: ExecutionContextExecutor = fromExecutor(newWorkStealingPool())
-  implicit val runtime: zio.Runtime[ZEnv] = this
-    .withExecutor(fromExecutionContext(defaultYieldOpCount)(executor))
+object Main extends CatsApp {
 
   private def dbResource: Resource[RIO[ZEnv, *], Db[RIO[ZEnv, *]]] =
     for {
-      blockingExecutor <- Resource.liftF(ZIO.accessM[Blocking](_.blocking.blockingExecutor))
+      blockingExecutor <- Resource.liftF(ZIO.access[Blocking](_.get.blockingExecutor))
       transactor <- H2Transactor.newH2Transactor(
         "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1",
         "username",
         "password",
-        executor,
+        fromExecutor(newWorkStealingPool()),
         Blocker.liftExecutionContext(blockingExecutor.asEC)
       )
     } yield Db(transactor)
@@ -41,7 +34,7 @@ object Main extends zio.App {
       serviceComponent <- ServiceComponent.mk(db).toManaged_
       httpComponent    = HttpComponent(Endpoints(serviceComponent))
       serverConfig     <- ConfigProvider.serverConfig.toManaged_
-      server           = HttpServer(serverConfig, httpComponent, executor)
+      server           = HttpServer(serverConfig, httpComponent, fromExecutor(newWorkStealingPool()))
       _                <- server.builder.resource.toManaged
     } yield ()).useForever
       .fold(_ => 1, _ => 0)
