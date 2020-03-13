@@ -1,19 +1,19 @@
 package com.maxticorn.config
 
-import zio.ZIO
+import zio.{ZIO, system}
 import zio.system.System
 
 object ConfigProvider {
-  def serverConfig: ZIO[System, Throwable, ServerConfig] =
+  def serverConfig: ZIO[System, RuntimeException, ServerConfig] =
     for {
-      host <- ZIO.accessM[System](_.get
+      host <- system
         .env("HOST")
-        .someOrFail(new RuntimeException(s"couldn't read host")))
+        .someOrFailException[String, RuntimeException]
 
-      port <- ZIO.accessM[System](_.get
+      port <- system
         .env("PORT")
         .map(_.flatMap(_.toIntOption))
-        .someOrFail(new RuntimeException(s"couldn't read port")))
+        .someOrFailException[Int, RuntimeException]
 
     } yield ServerConfig(host, port)
 }
