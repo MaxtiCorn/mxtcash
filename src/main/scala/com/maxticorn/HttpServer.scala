@@ -15,13 +15,14 @@ class HttpServerImpl[F[_]: ConcurrentEffect: Timer](
   config: ServerConfig,
   httpComponent: HttpComponent[F],
   executionContext: ExecutionContext
-)
-  extends HttpServer[F] {
+) extends HttpServer[F] {
   def builder: BlazeServerBuilder[F] =
     BlazeServerBuilder[F]
       .withExecutionContext(executionContext)
+      .withNio2(true)
       .bindHttp(config.port, config.host)
       .withHttpApp(httpComponent.httpApp)
+      .withoutBanner
 }
 
 object HttpServer {

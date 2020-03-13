@@ -11,7 +11,6 @@ import components.{HttpComponent, ServiceComponent}
 import zio.{Has, RIO, Runtime, ZIO}
 import zio.clock.Clock
 import zio.system.System
-import zio.blocking.Blocking
 import zio.internal.Platform
 import zio.interop.catz._
 
@@ -19,23 +18,25 @@ import scala.concurrent.ExecutionContext.fromExecutor
 import scala.concurrent.ExecutionContext
 
 object Main {
-  type Env = Clock with System with Blocking
-  val executor: ExecutionContext = fromExecutor(newWorkStealingPool())
+  type Env = Clock with System
+
+  val cpuBoundedExecutor: ExecutionContext = fromExecutor(newWorkStealingPool())
+  val boundedExecutor: ExecutionContext    = fromExecutor(newFixedThreadPool(4))
+  val unboundedExecutor: ExecutionContext  = fromExecutor(newCachedThreadPool())
   implicit val runtime: Runtime[Env] =
     RuntimeUtils(
-      Has(Clock.Service.live) ++ Has(System.Service.live) ++ Has(Blocking.Service.live),
-      executor
+      Has(Clock.Service.live) ++ Has(System.Service.live),
+      cpuBoundedExecutor
     )
 
   private def dbResource: Resource[RIO[Env, *], Db[RIO[Env, *]]] =
     for {
-      blockingExecutor <- Resource.liftF(ZIO.access[Blocking](_.get.blockingExecutor))
       transactor <- H2Transactor.newH2Transactor(
         "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1",
         "username",
         "password",
-        executor,
-        Blocker.liftExecutionContext(blockingExecutor.asEC)
+        boundedExecutor,
+        Blocker.liftExecutionContext(unboundedExecutor)
       )
     } yield Db(transactor)
 
@@ -45,7 +46,7 @@ object Main {
       serviceComponent <- ServiceComponent.mk(db).toManaged_
       httpComponent    = HttpComponent(Endpoints(serviceComponent))
       serverConfig     <- ConfigProvider.serverConfig.toManaged_
-      server           = HttpServer(serverConfig, httpComponent, executor)
+      server           = HttpServer(serverConfig, httpComponent, unboundedExecutor)
       _                <- server.builder.resource.toManaged
     } yield ()).useForever
 
